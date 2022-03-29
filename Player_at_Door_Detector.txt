@@ -1,0 +1,47 @@
+@name Public Player at Door Detector
+@outputs UserReport:string
+@persist AllowOwnerOnScreen
+
+interval(500)
+runOnChat(1)
+
+#User-configured
+Owner = "Val"
+ChipNum = ""
+SFXYes = "buttons/blip1.wav"
+SFXNo = "buttons/blip2.wav"
+AllowOwnerToggle = "!screentoggle" + ChipNum
+
+#INIT
+ChipPos = entity():pos()
+LastSaid = lastSaid():lower()
+findIncludeClass("player")
+findInSphere(ChipPos,800)
+findSortByDistance(ChipPos)
+OwnerSpoke = 0
+if(chatClk()) {
+    if((lastSpoke():name():lower():find(Owner:lower()) & (lastSpoke():pos():distance(ChipPos) < 1000))) {
+            OwnerSpoke = 1
+    }
+}
+
+#UserReport
+AtDoor = findResult(1)
+if(OwnerSpoke & (LastSaid == AllowOwnerToggle:lower())) {
+    AllowOwnerOnScreen = !AllowOwnerOnScreen
+    soundPlay(1,0,SFXYes)
+}
+if(!AllowOwnerOnScreen & (AtDoor:name():lower():find(Owner:lower()))){
+    AtDoor = findResult(2)
+}
+if(AtDoor:name() == ""){
+    UserReport = "No one is \n near the door"
+} else {
+    UserReport = AtDoor:name() + " is \n near the door, \n and is wielding "
+    Weapon = AtDoor:weapon():type()
+    if (Weapon == "") {
+        UserReport += "\n nothing"
+    } else {
+        UserReport += "their \n" + Weapon
+    }
+}
