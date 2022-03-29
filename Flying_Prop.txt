@@ -1,0 +1,46 @@
+@name Flying Prop
+@persist Chase:entity Direction
+@outputs A
+
+
+runOnTick(1)
+runOnChat(1)
+
+#User-configured
+Owner = owner():name():upper()
+Command = "!chase"
+SFX = "ambient/machines/combine_shield_touch_loop1.wav"
+SFXYes = "buttons/blip1.wav"
+
+#INIT
+LastSaid = lastSaid():upper()
+ChipPos = entity():pos()
+OwnerSpoke = 0
+if(chatClk()) {
+    if(lastSpoke():name():upper() == Owner) {
+        OwnerSpoke = 1
+    }
+}
+
+if(first()) {
+    soundPlay(1,0,SFX) 
+}
+
+if(OwnerSpoke & (LastSaid:find(Command:upper()))) {
+    Chase = findPlayerByName(LastSaid:sub(Command:length() + 2))
+    soundPlay(2,0,SFXYes) 
+}
+
+Temp = vec(0,0,0)
+if(Chase:name() == "") {
+    Flag = 1
+} else {
+    Flag = 0
+    Temp = (Chase:pos() + vec(0,0,100)) - ChipPos
+    Temp = (Temp / vec(abs(Temp:x()),abs(Temp:y()),abs(Temp:z()))) * vec(200,200,600)
+    entity():applyForce(Temp)
+}
+if(Flag) {
+    Direction = !Direction
+    entity():applyForce(array(vec(500,0,0),vec(-500,0,0))[(Direction+1),vector])
+}
