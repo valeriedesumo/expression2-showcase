@@ -1,96 +1,84 @@
 @name Chat Monitor
 @outputs ChatDisplay:string
-@persist ChatShow ChatLog:array TextQueue:array LineCountNum
+@persist ChatShow ChatLog:array PrintQueue:array LineCount
 
 runOnChat(1)
 
 #User-configured
 SFX = "buttons/blip1.wav"
 ChatToggle = "!chattoggle"
-LineCount = "!linecount"
+LineCountCmd = "!linecount"
 Upload = "!upload"
 
 #INIT
 if(first()) {
     ChatShow = 1
-    LineCountNum = 20
+    LineCount = 20
 }
 function string precedeZero(Time) {
     if(Time < 10) {
-        return "0" + Time:toString()
+        return "0" + Time
     } else {
         return Time:toString()
     }
 }
-LastSaid = lastSaid():lower()
-
-#TextQueue
-foreach(Index,Text:string = TextQueue) {
-    print(Text)
-    TextQueue:remove(Index)
-    stoptimer("interval")
-}
+LastSaid = lastSaid():upper()
 
 #Time
 Month = precedeZero(time("month"))
-Day = precedeZero(time("day"))
 Minute = precedeZero(time("min"))
 Second = precedeZero(time("sec"))
-if(time("hour") > 3) {
+if(time("hour") >= 4) { #EST
     Hour = precedeZero(time("hour") - 4)
+    Day = precedeZero(time("day"))
 } else {
     Hour = precedeZero(time("hour") + 20)
-    Day = (Day:toNumber() - 1):toString()
+    Day = precedeZero(time("day") - 1)
 }
-TimeStamp = "(" + Hour + ":" + Minute + ":" + Second + ") "
 
 #Chat & File
-Chat = TimeStamp + lastSpoke():name() + ": " + lastSaid()
-FileName = ">e2shared/chatlog_" + time("year"):toString() + "_" + Month + "_" + Day + ".txt"
-if(!clk()) {
-    ChatLog = ChatLog:add(array(Chat))
+Chat = "(" + Hour + ":" + Minute + ":" + Second + ") " + lastSpoke():name() + ": " + lastSaid()
+FileName = ">e2shared/chatlog_" + time("year") + "_" + Month + "_" + Day + ".txt"
+if(chatClk()) {
+    ChatLog:pushString(Chat)
     fileAppend(FileName,Chat + "\n")
 }
 
 #LineCount
-if(chatClk(owner()) & (LastSaid:sub(1,LineCount:length() + 1) == LineCount + " ")) {
-    LineCountNum = LastSaid:sub(LineCount:length() + 2):toNumber()
+if(chatClk(owner()) & (LastSaid:sub(1,LineCountCmd:length() + 1) == LineCountCmd:upper() + " ")) {
+    LineCount = LastSaid:sub(LineCountCmd:length() + 2):toNumber()
     soundPlay(1,0,SFX)
-    TextQueue = TextQueue:add(array("Number of displayed lines is now " + LineCountNum:toString()))
+    PrintQueue:pushString("Number of displayed lines is now " + LineCount)
 }
-while(ChatLog:count() > LineCountNum) {
+while(ChatLog:count() > LineCount) {
     ChatLog:remove(1)
 }
 
 #ChatToggle
-if(chatClk(owner()) & (LastSaid == ChatToggle)) {
+if(chatClk(owner()) & (LastSaid == ChatToggle:upper())) {
     ChatShow = !ChatShow
     soundPlay(1,0,SFX)
-    TextQueue = TextQueue:add(array("Chat display toggled"))
+    PrintQueue:pushString("Chat display toggled")
 }
 
 #ChatDisplay
-First = 1
 if(ChatShow) {
-    foreach(Index,CurChat:string = ChatLog){
-        if(First) {
-            ChatDisplay = "\n" + CurChat + "\n"
-            First = 0
-        } else {
-            ChatDisplay += CurChat + "\n"
-        }
-    }
+    ChatDisplay = "\n" + ChatLog:concat("\n")
 } else {
     ChatDisplay = ""
 }
 
 #Upload
-if(chatClk(owner()) & (LastSaid == Upload)) {
+if(chatClk(owner()) & (LastSaid == Upload:upper())) {
     fileLoad(FileName)
     soundPlay(1,0,SFX)
-    TextQueue = TextQueue:add(array("File uploading"))
+    PrintQueue:pushString("File uploaded")
 }
 
-if(TextQueue:count() != 0) {
+#PrintQueue
+if(clk("interval")) {
+    print(PrintQueue:shiftString())
+}
+if(PrintQueue:count()) {
     interval(100)
 }
